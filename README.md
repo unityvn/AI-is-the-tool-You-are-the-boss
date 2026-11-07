@@ -75,28 +75,17 @@ Code có thể compile và chạy, nhưng abstraction đã sai từ đầu. Đâ
 Sơ đồ dưới đây cho thấy vấn đề: mọi provider đều bị buộc phụ thuộc vào một `Client` lớn, dù mỗi provider chỉ hỗ trợ một phần capability.
 
 ```mermaid
-classDiagram
-    class Client {
-        <<abstract>>
-        +ShowInterstitial()
-        +ShowReward()
-        +ShowBanner()
-        +ShowAppOpen()
-        +ShowNative()
-        +ShowRewardInterstitial()
-    }
+flowchart TD
+    Client[Abstract Client<br/>Interstitial · Reward · Banner<br/>App Open · Native · Reward Interstitial]
 
-    class AdmobClient
-    class MaxClient
-    class LevelPlayClient
+    Client --> Admob[AdmobClient<br/>Supports all capabilities]
+    Client --> Max[MaxClient<br/>Native and Reward Interstitial unsupported]
+    Client --> LevelPlay[LevelPlayClient<br/>Native, Reward Interstitial and App Open unsupported]
 
-    Client <|-- AdmobClient
-    Client <|-- MaxClient
-    Client <|-- LevelPlayClient
-
-    note for AdmobClient "Supports all capabilities"
-    note for MaxClient "Native and Reward Interstitial are unsupported"
-    note for LevelPlayClient "Native, Reward Interstitial and App Open are unsupported"
+    style Client fill:#f9f,stroke:#333,stroke-width:2px
+    style Admob fill:#d5f5e3,stroke:#333
+    style Max fill:#fdebd0,stroke:#333
+    style LevelPlay fill:#fdebd0,stroke:#333
 ```
 
 Vấn đề nằm ở chỗ `MaxClient` và `LevelPlayClient` vẫn phải mang theo những method mà chúng không thể thực hiện. Các method trống hoặc trả về giá trị mặc định làm cho abstraction trông thống nhất nhưng không còn phản ánh đúng thực tế.
@@ -125,51 +114,26 @@ Kết quả là không còn method trống, giảm coupling, dễ thêm provider
 Sau khi áp dụng Interface Segregation Principle, mỗi capability trở thành một interface độc lập. Provider chỉ phụ thuộc vào những interface mà nó thực sự hỗ trợ.
 
 ```mermaid
-classDiagram
-    class IInterstitialAds {
-        <<interface>>
-        +ShowInterstitial()
-    }
-    class IRewardAds {
-        <<interface>>
-        +ShowReward()
-    }
-    class IBannerAds {
-        <<interface>>
-        +ShowBanner()
-    }
-    class IAppOpenAds {
-        <<interface>>
-        +ShowAppOpen()
-    }
-    class INativeAds {
-        <<interface>>
-        +ShowNative()
-    }
-    class IRewardInterstitialAds {
-        <<interface>>
-        +ShowRewardInterstitial()
-    }
+flowchart LR
+    Admob[AdmobClient] --> AI[Interstitial]
+    Admob --> AR[Reward]
+    Admob --> AB[Banner]
+    Admob --> AO[App Open]
+    Admob --> AN[Native]
+    Admob --> ARI[Reward Interstitial]
 
-    class AdmobClient
-    class MaxClient
-    class LevelPlayClient
+    Max[MaxClient] --> MI[Interstitial]
+    Max --> MR[Reward]
+    Max --> MB[Banner]
+    Max --> MO[App Open]
 
-    AdmobClient ..|> IInterstitialAds
-    AdmobClient ..|> IRewardAds
-    AdmobClient ..|> IBannerAds
-    AdmobClient ..|> IAppOpenAds
-    AdmobClient ..|> INativeAds
-    AdmobClient ..|> IRewardInterstitialAds
+    LevelPlay[LevelPlayClient] --> LI[Interstitial]
+    LevelPlay --> LR[Reward]
+    LevelPlay --> LB[Banner]
 
-    MaxClient ..|> IInterstitialAds
-    MaxClient ..|> IRewardAds
-    MaxClient ..|> IBannerAds
-    MaxClient ..|> IAppOpenAds
-
-    LevelPlayClient ..|> IInterstitialAds
-    LevelPlayClient ..|> IRewardAds
-    LevelPlayClient ..|> IBannerAds
+    style Admob fill:#d5f5e3,stroke:#333,stroke-width:2px
+    style Max fill:#d6eaf8,stroke:#333,stroke-width:2px
+    style LevelPlay fill:#e8daef,stroke:#333,stroke-width:2px
 ```
 
 Sơ đồ mới thể hiện đúng capability của từng nền tảng. Khi một hệ thống cần hiển thị Native Ads, nó chỉ phụ thuộc vào `INativeAds`; nó không cần biết toàn bộ `Client` hay các capability khác.
