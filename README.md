@@ -70,6 +70,37 @@ Thiết kế đó tạo ra vấn đề rõ ràng:
 
 Code có thể compile và chạy, nhưng abstraction đã sai từ đầu. Đây là kiểu code nhìn có vẻ “dùng chung được” nhưng tạo ra nhiều phụ thuộc giả và method thừa.
 
+### 🏗️ Kiến trúc trước khi refactor
+
+Sơ đồ dưới đây cho thấy vấn đề: mọi provider đều bị buộc phụ thuộc vào một `Client` lớn, dù mỗi provider chỉ hỗ trợ một phần capability.
+
+```mermaid
+classDiagram
+    class Client {
+        <<abstract>>
+        +ShowInterstitial()
+        +ShowReward()
+        +ShowBanner()
+        +ShowAppOpen()
+        +ShowNative()
+        +ShowRewardInterstitial()
+    }
+
+    class AdmobClient
+    class MaxClient
+    class LevelPlayClient
+
+    Client <|-- AdmobClient
+    Client <|-- MaxClient
+    Client <|-- LevelPlayClient
+
+    note for AdmobClient "Supports all capabilities"
+    note for MaxClient "Native and Reward Interstitial are unsupported"
+    note for LevelPlayClient "Native, Reward Interstitial and App Open are unsupported"
+```
+
+Vấn đề nằm ở chỗ `MaxClient` và `LevelPlayClient` vẫn phải mang theo những method mà chúng không thể thực hiện. Các method trống hoặc trả về giá trị mặc định làm cho abstraction trông thống nhất nhưng không còn phản ánh đúng thực tế.
+
 ### 🔧 Giải pháp: chia nhỏ interface theo SOLID
 
 Tôi yêu cầu AI refactor theo SOLID, đặc biệt là **Interface Segregation Principle**. Thay vì một abstract class lớn, hệ thống được chia thành:
@@ -88,6 +119,60 @@ Mỗi client chỉ triển khai interface tương ứng:
 - `LevelPlayClient` triển khai Interstitial, Reward và Banner Ads.
 
 Kết quả là không còn method trống, giảm coupling, dễ thêm provider và cấu trúc phản ánh đúng khả năng từng nền tảng. Có thể xem phần refactor trong [commit này](https://github.com/VirtueSky/sunflower_2/commit/b347e3ba89c1499f4856505dc55b602ddb70f402).
+
+### ✅ Kiến trúc sau khi refactor theo SOLID
+
+Sau khi áp dụng Interface Segregation Principle, mỗi capability trở thành một interface độc lập. Provider chỉ phụ thuộc vào những interface mà nó thực sự hỗ trợ.
+
+```mermaid
+classDiagram
+    class IInterstitialAds {
+        <<interface>>
+        +ShowInterstitial()
+    }
+    class IRewardAds {
+        <<interface>>
+        +ShowReward()
+    }
+    class IBannerAds {
+        <<interface>>
+        +ShowBanner()
+    }
+    class IAppOpenAds {
+        <<interface>>
+        +ShowAppOpen()
+    }
+    class INativeAds {
+        <<interface>>
+        +ShowNative()
+    }
+    class IRewardInterstitialAds {
+        <<interface>>
+        +ShowRewardInterstitial()
+    }
+
+    class AdmobClient
+    class MaxClient
+    class LevelPlayClient
+
+    AdmobClient ..|> IInterstitialAds
+    AdmobClient ..|> IRewardAds
+    AdmobClient ..|> IBannerAds
+    AdmobClient ..|> IAppOpenAds
+    AdmobClient ..|> INativeAds
+    AdmobClient ..|> IRewardInterstitialAds
+
+    MaxClient ..|> IInterstitialAds
+    MaxClient ..|> IRewardAds
+    MaxClient ..|> IBannerAds
+    MaxClient ..|> IAppOpenAds
+
+    LevelPlayClient ..|> IInterstitialAds
+    LevelPlayClient ..|> IRewardAds
+    LevelPlayClient ..|> IBannerAds
+```
+
+Sơ đồ mới thể hiện đúng capability của từng nền tảng. Khi một hệ thống cần hiển thị Native Ads, nó chỉ phụ thuộc vào `INativeAds`; nó không cần biết toàn bộ `Client` hay các capability khác.
 
 > **Dùng chung code không có nghĩa là ép mọi nền tảng phải dùng chung một interface lớn.**
 
